@@ -62,7 +62,7 @@ def load_dw():\
 
 if __name__ == "__main__":
     load_dw()
-    print("\n\n\n\n\n\n\n")
+    print("\n" * 100)
     print("Carregando.")
     sleep(1)
     print("Carregando..")
