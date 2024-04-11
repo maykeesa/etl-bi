@@ -1,48 +1,4 @@
-from pyspark.sql import SparkSession
 from pyspark.sql import functions as F
-from pyspark.sql.functions import sum as sum_spark
-from pyspark.sql.functions import year, quarter, month
-
-spark = SparkSession.builder.appName("SimpleApp").config('spark.jars', 'postgresql-42.6.0.jar').getOrCreate()
-
-"""
-Tabelas:
-    categories - categorias
-    products - produtos
-    sales - vendas
-    sales_items - itens vendidos
-    customers - clientes
-    sellers - vendedores
-    suppliers - fornecedores
-
-Informações para o Datawarehouse:
-    obs:
-    * -> Dataframe criado, falta ennviar apenas os dados necessários para o DW
-    
-    Tabelas:
-    • Produtos mais vendidos - V
-    • Faturamento total - V
-    • Faturamento por categoria e por produto - V*
-    • Maiores comissões de vendedores - V*
-    • Quantidade de Fornecedores por estado - V*
-    • Quantidade de clientes por estado - V*
-    
-    Regras:
-    • Todas as representações devem estar por ano, trimestre e mês. - 
-    • Todas as datas devem estar no formato YYYYMMDD
-    • Todos os textos precisam estar em maiúsculo
-    • Embora não esteja no sistema OLTP, no DW será preciso criar um campo "region" para guardar a região
-    do estado.
-
-    Observações:
-    • É preciso calcular e armazenar o subtotal por item de venda.
-"""
-
-def get_dataframe_by_datatable(spark, dt):
-    return spark.read \
-        .jdbc("jdbc:postgresql://localhost:5432/techpop", dt, \
-            properties={"user": "postgres", "password": "123", "driver":"org.postgresql.Driver"})
-
 
 def get_top_selling_products(df_sales_items, df_sales, df_products, type_date="YEAR"):
     df_joined = df_sales_items.join(df_sales, "sales_id") \
@@ -162,20 +118,3 @@ def get_customers_by_state(df_customers):
     df_customers = df_customers.groupBy("state").count()
     df_customers = df_customers.withColumnRenamed("count", "total_customers")
     return df_customers
-
-if __name__ == "__main__":
-    df_sales_items = get_dataframe_by_datatable(spark, "sales_items")
-    df_products = get_dataframe_by_datatable(spark, "products")
-    df_sales = get_dataframe_by_datatable(spark, "sales")
-    df_customers = get_dataframe_by_datatable(spark, "customers")
-    df_suppliers = get_dataframe_by_datatable(spark, "suppliers")
-    df_sellers = get_dataframe_by_datatable(spark, "sellers")
-    df_categories = get_dataframe_by_datatable(spark, "categories")
-
-    get_top_selling_sellers( 
-        df_sales_items, 
-        df_sales, 
-        df_products,
-        df_sellers,
-        type_date="QUARTER"
-    ).show()
