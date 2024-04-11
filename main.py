@@ -124,21 +124,17 @@ def get_total_revenue_by_product_and_category(df_sales_items, df_sales, df_produ
     return df_ordered
 
 def get_top_selling_sellers(df_sales_items, df_sales, df_products, df_sellers, type_date="YEAR"):
-    # Definindo aliases para os DataFrames para evitar ambiguidades
     df_sales_items_alias = df_sales_items.alias('si')
     df_sales_alias = df_sales.alias('s')
     df_products_alias = df_products.alias('p')
     df_sellers_alias = df_sellers.alias('s2')
 
-    # Realiza os joins
     df_joined = df_sales_items_alias.join(df_sales_alias, "sales_id") \
                                     .join(df_products_alias, "product_id") \
                                     .join(df_sellers_alias, "seller_id")
 
-    # Calcula a comissão por venda
     df_joined = df_joined.withColumn("commission", (F.col("si.quantity") * F.col("p.price") * F.col("s2.tx_commission")) / 100)
 
-    # Adiciona a coluna de período baseada no tipo de data
     if type_date == "YEAR":
         df_joined = df_joined.withColumn("period", F.year(F.col("s.date")))
     elif type_date == "QUARTER":
@@ -148,14 +144,11 @@ def get_top_selling_sellers(df_sales_items, df_sales, df_products, df_sellers, t
     elif type_date == "DATE":
         df_joined = df_joined.withColumn("period", F.date_format(F.col("s.date"), "yyyyMMdd"))
 
-    # Convertendo o nome do vendedor para letras maiúsculas
     df_joined = df_joined.withColumn("seller_name", F.upper(F.col("s2.seller_name")))
 
-    # Agrupa por nome do vendedor e período, calculando a comissão total
     df_grouped = df_joined.groupBy("period", "seller_name") \
                           .agg(F.sum("commission").alias("commission"))
 
-    # Ordena por período e comissão total, em ordem descendente de comissão
     df_ordered = df_grouped.orderBy("period", F.col("commission").desc())
 
     return df_ordered
