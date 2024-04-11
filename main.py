@@ -1,4 +1,5 @@
 from pyspark.sql import SparkSession
+from pyspark.sql.functions import sum as sum_spark
 from pyspark.sql.functions import col
 from pyspark.sql.functions import year, quarter, month
 
@@ -43,12 +44,22 @@ def get_dataframe_by_datatable(spark, dt):
         .jdbc("jdbc:postgresql://localhost:5432/techpop", dt, \
             properties={"user": "postgres", "password": "123", "driver":"org.postgresql.Driver"})
 
-def teste(df_sales_items, df_products):    
-    df_sales_items = df_sales_items.groupBy("product_id").sum("quantity").withColumnRenamed("sum(quantity)", "total_quantity")
-    df_products = df_products.join(df_sales_items, df_products["product_id"] == df_sales_items["product_id"], "inner")
-    df_products = df_products.orderBy("total_quantity", ascending=False)
-    df_products = df_products.withColumn("year", year(df_products["date"]))
-    return df_products
+from pyspark.sql.functions import year, month, quarter
+
+def get_top_selling_products(df_sales_items, df_sales, df_products):
+    df_joined = df_sales_items.join(df_sales, df_sales_items["sales_id"] == df_sales["sales_id"]) \
+        .join(df_products, df_sales_items["product_id"] == df_products["product_id"])
+
+    # Cria uma coluna YEAR com o ano da data
+    df_joined = df_joined.withColumn("YEAR", year(df_joined["date"]))
+
+    # Agrupa por ano e nome do produto, calcula a quantidade total vendida e ordena por ano e quantidade
+    df_result = df_joined.groupBy("YEAR", "product_name").agg(sum_spark("quantity").alias("qtd")) \
+        .orderBy("YEAR", "qtd", ascending=[True, False])
+    
+    return df_result
+
+
 
 def get_top_selling_products_year(df_sales_items, df_products):    
     df_sales_items = df_sales_items.groupBy("product_id").sum("quantity").withColumnRenamed("sum(quantity)", "total_quantity")
@@ -113,4 +124,4 @@ if __name__ == "__main__":
     df_sellers = get_dataframe_by_datatable(spark, "sellers")
     df_categories = get_dataframe_by_datatable(spark, "categories")
 
-    get_top_selling_products_year(df_sales_items, df_products).show()
+    get_top_selling_products(df_sales_items, df_sales, df_products).show()
